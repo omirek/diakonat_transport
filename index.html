@@ -11,14 +11,15 @@
     <style>
         body { background-color: #f3f4f6; font-family: sans-serif; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        /* Animacja ładowania */
-        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
-        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        [v-cloak] { display: none; }
+        
+        /* Styl dla formularza dodawania */
+        .add-form { background-color: #f9fafb; border-top: 1px dashed #d1d5db; }
     </style>
 </head>
 <body>
 
-<div id="app" class="max-w-md mx-auto p-4 min-h-screen pb-20">
+<div id="app" v-cloak class="max-w-md mx-auto p-4 min-h-screen pb-24">
     
     <header class="mb-6 text-center">
         <h1 class="text-2xl font-bold text-gray-800">Transport Kościelny</h1>
@@ -26,15 +27,16 @@
     </header>
 
     <div v-if="loading" class="text-center py-10 text-gray-500">
-        Ładowanie danych...
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+        <div>Ładowanie danych...</div>
     </div>
 
     <div v-else>
         <!-- Sekcja: Sugerowany Kierowca -->
         <div class="card p-4 mb-6 border-l-4 border-blue-500">
-            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Sugerowany kierowca</h2>
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Kolejka (Sugestia)</h2>
             <div class="text-xl font-bold text-gray-800">
-                {{ suggestedDriver ? suggestedDriver : 'Brak danych do sugestii' }}
+                {{ suggestedDriver ? suggestedDriver : 'Wszyscy aktywni kierowcy jeździli niedawno' }}
             </div>
             <p class="text-xs text-gray-500 mt-1 leading-snug">
                 {{ suggestionReason }}
@@ -45,104 +47,110 @@
         <div class="mb-8">
             <h2 class="text-lg font-bold text-gray-700 mb-3">Najbliższe terminy</h2>
             
-            <div v-for="week in upcomingWeeks" :key="week.date" class="card p-4 mb-3 flex flex-col gap-2 relative">
-                <div class="flex justify-between items-center mb-1">
+            <div v-for="week in upcomingWeeks" :key="week.date" class="card mb-4 overflow-hidden">
+                
+                <!-- Nagłówek Daty -->
+                <div class="bg-white p-4 border-b border-gray-100 flex justify-between items-center">
                     <span class="font-bold text-lg text-gray-800 capitalize">{{ formatDate(week.date) }}</span>
-                    <!-- Status -->
-                    <span v-if="week.driver" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">ZAPISANE</span>
-                    <span v-else class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-bold">WOLNE</span>
+                    <span v-if="week.trips.length > 0" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">
+                        Zaplanowane: {{ week.trips.length }}
+                    </span>
+                    <span v-else class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">Pusto</span>
                 </div>
 
-                <!-- Formularz zapisu (gdy wolne) -->
-                <div v-if="!week.driver" class="mt-2 space-y-3">
-                    
-                    <!-- Wybór Pasażera -->
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Kogo wieziemy?</label>
-                        <select v-model="week.passenger" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-blue-500 outline-none">
-                            <option value="" disabled>-- Wybierz pasażera --</option>
+                <!-- Lista zaplanowanych przejazdów w ten dzień -->
+                <div v-if="week.trips.length > 0" class="p-2 space-y-2 bg-white">
+                    <div v-for="trip in week.trips" :key="trip.id" class="flex justify-between items-center bg-green-50 p-3 rounded border border-green-200 shadow-sm">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-700 uppercase">Pasażer:</span>
+                                <span class="font-bold text-gray-800">{{ trip.passenger }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-green-700 uppercase">Kierowca:</span>
+                                <span class="text-sm text-gray-800">{{ trip.driver_name }}</span>
+                            </div>
+                        </div>
+                        <button @click="removeDriver(trip.id)" class="text-red-400 hover:text-red-600 p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Formularz dodawania (zawsze widoczny) -->
+                <div class="add-form p-4">
+                    <p class="text-xs text-gray-400 uppercase font-bold mb-2">
+                        {{ week.trips.length > 0 ? '+ Dodaj kolejny transport' : 'Zaplanuj transport' }}
+                    </p>
+                    <div class="flex flex-col gap-2">
+                        <!-- Wybór Pasażera -->
+                        <select v-model="week.newEntry.passenger" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="" disabled>-- Kogo wieziemy? --</option>
                             <option v-for="p in passengers" :value="p.name">{{ p.name }}</option>
                         </select>
-                    </div>
 
-                    <!-- Wybór Kierowcy -->
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Kto wiezie?</label>
-                        <select v-model="week.selectedDriver" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:border-blue-500 outline-none">
-                            <option value="" disabled selected>-- Wybierz kierowcę --</option>
-                            <option v-for="driver in drivers" :value="driver.name">{{ driver.name }}</option>
-                        </select>
-                    </div>
-
-                    <button @click="assignDriver(week)" 
-                            :disabled="!week.selectedDriver || !week.passenger"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm mt-1">
-                        Zapisz transport
-                    </button>
-                </div>
-
-                <!-- Podgląd (gdy zajęte) -->
-                <div v-else class="mt-1 bg-gray-50 p-3 rounded border border-gray-200">
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                            <span class="text-xs text-gray-500 block">Pasażer</span>
-                            <span class="font-bold text-gray-800">{{ week.passenger }}</span>
-                        </div>
-                        <div>
-                            <span class="text-xs text-gray-500 block">Kierowca</span>
-                            <span class="font-bold text-gray-800">{{ week.driver }}</span>
+                        <!-- Wybór Kierowcy -->
+                        <div class="flex gap-2">
+                            <select v-model="week.newEntry.driver" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="" disabled selected>-- Kto wiezie? --</option>
+                                <option v-for="driver in drivers" :value="driver.name">{{ driver.name }}</option>
+                            </select>
+                            
+                            <button @click="assignDriver(week)" 
+                                    :disabled="!week.newEntry.driver || !week.newEntry.passenger"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap">
+                                Zapisz
+                            </button>
                         </div>
                     </div>
-                    <div class="text-right mt-2 border-t pt-2 border-gray-200">
-                        <button @click="removeDriver(week.id)" class="text-xs text-red-500 hover:text-red-700 font-medium">Usuń / Odwołaj</button>
-                    </div>
                 </div>
+
             </div>
         </div>
 
-        <!-- Sekcja: Zarządzanie osobami (Kierowcy i Pasażerowie) -->
-        <div class="grid grid-cols-1 gap-4 mb-8">
-            
-            <!-- Dodaj Kierowcę -->
-            <div class="card p-4">
+        <!-- Sekcja: Zarządzanie (Zwijana) -->
+        <div class="space-y-3 mb-8">
+            <!-- Kierowcy -->
+            <div class="card p-3">
                 <button @click="uiState.showAddDriver = !uiState.showAddDriver" class="flex justify-between items-center w-full text-sm font-bold text-gray-700">
-                    <span>Zarządzaj Kierowcami</span>
-                    <span class="text-blue-500">{{ uiState.showAddDriver ? '−' : '+' }}</span>
+                    <span>Baza Kierowców</span>
+                    <span class="text-blue-500 font-normal text-xs">{{ drivers.length }} osób {{ uiState.showAddDriver ? '▲' : '▼' }}</span>
                 </button>
-                
-                <div v-if="uiState.showAddDriver" class="mt-3 pt-3 border-t">
-                    <input v-model="newDriverName" type="text" placeholder="Imię i Nazwisko kierowcy" class="w-full p-2 border rounded mb-2 text-sm">
-                    <button @click="addNewPerson('drivers', newDriverName)" class="w-full bg-gray-800 text-white py-2 rounded text-sm">Dodaj do bazy</button>
-                    <p class="text-xs text-gray-400 mt-2">Aktualnie w bazie: {{ drivers.length }} osób.</p>
+                <div v-if="uiState.showAddDriver" class="mt-3 pt-2 border-t">
+                    <div class="flex gap-2">
+                        <input v-model="newDriverName" type="text" placeholder="Imię i Nazwisko" class="flex-1 p-2 border rounded text-sm">
+                        <button @click="addNewPerson('drivers', newDriverName)" class="bg-gray-800 text-white px-3 py-2 rounded text-sm">Dodaj</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Dodaj Pasażera -->
-            <div class="card p-4">
+            <!-- Pasażerowie -->
+            <div class="card p-3">
                 <button @click="uiState.showAddPassenger = !uiState.showAddPassenger" class="flex justify-between items-center w-full text-sm font-bold text-gray-700">
-                    <span>Zarządzaj Pasażerami</span>
-                    <span class="text-blue-500">{{ uiState.showAddPassenger ? '−' : '+' }}</span>
+                    <span>Baza Pasażerów</span>
+                    <span class="text-blue-500 font-normal text-xs">{{ passengers.length }} osób {{ uiState.showAddPassenger ? '▲' : '▼' }}</span>
                 </button>
-                
-                <div v-if="uiState.showAddPassenger" class="mt-3 pt-3 border-t">
-                    <input v-model="newPassengerName" type="text" placeholder="Imię i Nazwisko pasażera" class="w-full p-2 border rounded mb-2 text-sm">
-                    <button @click="addNewPerson('passengers', newPassengerName)" class="w-full bg-indigo-600 text-white py-2 rounded text-sm">Dodaj do bazy</button>
-                    <p class="text-xs text-gray-400 mt-2">Aktualnie w bazie: {{ passengers.length }} osób.</p>
+                <div v-if="uiState.showAddPassenger" class="mt-3 pt-2 border-t">
+                    <div class="flex gap-2">
+                        <input v-model="newPassengerName" type="text" placeholder="Imię i Nazwisko" class="flex-1 p-2 border rounded text-sm">
+                        <button @click="addNewPerson('passengers', newPassengerName)" class="bg-indigo-600 text-white px-3 py-2 rounded text-sm">Dodaj</button>
+                    </div>
                 </div>
             </div>
-
         </div>
 
-        <!-- Sekcja: Historia -->
+        <!-- Historia -->
         <div class="opacity-60 hover:opacity-100 transition-opacity">
-            <h2 class="text-lg font-bold text-gray-700 mb-3">Historia (ostatnie 3 msc)</h2>
+            <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">Historia (ostatnie 3 msc)</h2>
             <div v-if="history.length === 0" class="text-gray-400 text-sm italic">Brak historii przejazdów.</div>
-            <ul class="space-y-2 bg-white p-4 rounded-xl shadow-sm">
-                <li v-for="trip in history" :key="trip.id" class="flex justify-between text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0 pt-2 first:pt-0">
-                    <span class="text-gray-500">{{ formatDate(trip.date) }}</span>
+            <ul class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <li v-for="trip in history" :key="trip.id" class="flex justify-between items-center p-3 border-b border-gray-100 last:border-0 text-sm">
+                    <span class="text-gray-500 text-xs">{{ formatDate(trip.date) }}</span>
                     <div class="text-right">
                         <span class="block font-bold text-gray-800">{{ trip.driver_name }}</span>
-                        <span class="block text-xs text-gray-400">wiózł: {{ trip.passenger }}</span>
+                        <span class="block text-xs text-gray-500">→ {{ trip.passenger }}</span>
                     </div>
                 </li>
             </ul>
@@ -153,14 +161,19 @@
 
 <script>
     // ---------------------------------------------------------
-    // KONFIGURACJA SUPABASE
+    // WPISZ DANE SUPABASE TUTAJ
     // ---------------------------------------------------------
     const SUPABASE_URL = 'https://mniipgqpekhxbrzmwrtz.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uaWlwZ3FwZWtoeGJyem13cnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0OTY0NDAsImV4cCI6MjA4NTA3MjQ0MH0.MXI-k9bczgDmuCxJZi4QH9noOZBMZo1f06ro9c8qsuQ';
     // ---------------------------------------------------------
 
     const { createClient } = supabase;
-    const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Zabezpieczenie przed pustymi kluczami (dla debugowania)
+    const _supabase = (SUPABASE_URL.includes('TWOJ') || SUPABASE_KEY.includes('TWOJ')) 
+        ? null 
+        : createClient(SUPABASE_URL, SUPABASE_KEY);
+
     const { createApp, ref, reactive, onMounted } = Vue;
 
     createApp({
@@ -171,7 +184,6 @@
             const upcomingWeeks = ref([]);
             const history = ref([]);
             
-            // UI State
             const uiState = reactive({
                 showAddDriver: false,
                 showAddPassenger: false
@@ -179,15 +191,20 @@
             const newDriverName = ref('');
             const newPassengerName = ref('');
 
-            // Sugestie
             const suggestedDriver = ref('');
             const suggestionReason = ref('');
 
             // --- POBIERANIE DANYCH ---
             const fetchData = async () => {
+                if (!_supabase) {
+                    alert("UZUPEŁNIJ KLUCZE SUPABASE W KODZIE HTML!");
+                    loading.value = false;
+                    return;
+                }
+
                 loading.value = true;
                 
-                // 1. Pobierz kierowców i pasażerów
+                // 1. Pobierz wszystko
                 const [driversRes, passengersRes, tripsRes] = await Promise.all([
                     _supabase.from('drivers').select('*').order('name'),
                     _supabase.from('passengers').select('*').order('name'),
@@ -198,46 +215,56 @@
                 passengers.value = passengersRes.data || [];
                 const allTrips = tripsRes.data || [];
 
-                // 2. Podział na historię i przyszłość
+                // 2. Historia
                 const today = new Date().toISOString().split('T')[0];
                 const threeMonthsAgo = new Date();
                 threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
                 history.value = allTrips.filter(t => t.date < today && new Date(t.date) > threeMonthsAgo);
                 
-                // 3. Generowanie kalendarza
-                generateUpcomingSaturdays(allTrips);
+                // 3. Generuj widok tygodni
+                generateUpcomingWeeks(allTrips);
                 
-                // 4. Oblicz sugestię
+                // 4. Sugestie
                 calculateSuggestion(allTrips);
 
                 loading.value = false;
             };
 
-            const generateUpcomingSaturdays = (existingTrips) => {
+            const generateUpcomingWeeks = (allTrips) => {
                 const weeks = [];
                 let d = new Date();
-                // Znajdź najbliższą sobotę
+                // Przeskocz do najbliższej soboty
                 d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7);
 
                 for (let i = 0; i < 5; i++) {
                     const dateStr = d.toISOString().split('T')[0];
-                    const trip = existingTrips.find(t => t.date === dateStr);
                     
-                    // Domyślny pasażer: Bogdan (jeśli istnieje w bazie), w przeciwnym razie pierwszy z listy
-                    let defaultPassenger = '';
-                    if (!trip) {
-                        const bogdan = passengers.value.find(p => p.name.includes('Bogdan'));
-                        defaultPassenger = bogdan ? bogdan.name : '';
+                    // Znajdź wszystkie przejazdy w ten dzień
+                    const tripsThisDay = allTrips.filter(t => t.date === dateStr);
+                    
+                    // Sprawdź, kto już jedzie, żeby podpowiedzieć kogoś innego
+                    const takenPassengers = tripsThisDay.map(t => t.passenger);
+                    
+                    // Znajdź pierwszego pasażera z bazy, który nie ma jeszcze transportu w ten dzień
+                    // (np. jeśli Bogdan ma, to podstaw Annę)
+                    let suggestedPassenger = '';
+                    const availablePassenger = passengers.value.find(p => !takenPassengers.includes(p.name));
+                    
+                    // Jeśli wszyscy mają transport, zostaw puste lub pierwszego z listy
+                    if (availablePassenger) {
+                        suggestedPassenger = availablePassenger.name;
+                    } else if (passengers.value.length > 0) {
+                        suggestedPassenger = ''; // Niech użytkownik wybierze sam
                     }
 
                     weeks.push({
-                        id: trip ? trip.id : null,
                         date: dateStr,
-                        driver: trip ? trip.driver_name : null,
-                        // Jeśli jest wpis w bazie, weź pasażera z bazy. Jeśli nie ma, ustaw domyślnego
-                        passenger: trip ? trip.passenger : defaultPassenger,
-                        selectedDriver: ''
+                        trips: tripsThisDay, // Tablica przejazdów (może być pusta)
+                        newEntry: {          // Stan formularza dla tego konkretnego dnia
+                            passenger: suggestedPassenger, 
+                            driver: '' 
+                        }
                     });
                     
                     d.setDate(d.getDate() + 7);
@@ -245,11 +272,8 @@
                 upcomingWeeks.value = weeks;
             };
 
-            // --- LOGIKA BIZNESOWA ---
-
             const calculateSuggestion = (allTrips) => {
                 if (drivers.value.length === 0) return;
-
                 const driverNames = drivers.value.map(d => d.name);
                 const pastDrivers = allTrips.filter(t => t.driver_name).map(t => t.driver_name);
                 const neverDriven = driverNames.filter(name => !pastDrivers.includes(name));
@@ -257,58 +281,53 @@
                 if (neverDriven.length > 0) {
                     const randomIdx = Math.floor(Math.random() * neverDriven.length);
                     suggestedDriver.value = neverDriven[randomIdx];
-                    suggestionReason.value = "Ta osoba jeszcze nigdy nie wiozła nikogo (losowanie z puli nowych).";
+                    suggestionReason.value = "Ta osoba jeszcze nigdy nie wiozła nikogo.";
                 } else {
                     const lastDriveMap = {};
                     allTrips.forEach(t => {
                         if (!t.driver_name) return;
                         if (!lastDriveMap[t.driver_name]) lastDriveMap[t.driver_name] = t.date;
                     });
-
                     const sortedByDate = driverNames.sort((a, b) => {
                         const dateA = lastDriveMap[a] || '1970-01-01';
                         const dateB = lastDriveMap[b] || '1970-01-01';
                         return new Date(dateA) - new Date(dateB);
                     });
-
                     suggestedDriver.value = sortedByDate[0];
                     const lastDate = lastDriveMap[sortedByDate[0]];
-                    suggestionReason.value = `Ta osoba jechała najdawniej (ostatnio: ${lastDate ? formatDate(lastDate) : 'brak danych'}).`;
+                    suggestionReason.value = `Ostatnio jechał: ${lastDate ? formatDate(lastDate) : 'brak danych'}.`;
                 }
             };
 
             const assignDriver = async (week) => {
-                if (!week.selectedDriver || !week.passenger) return;
+                const entry = week.newEntry;
+                if (!entry.driver || !entry.passenger) return;
                 
                 const { error } = await _supabase.from('trips').insert({
                     date: week.date,
-                    driver_name: week.selectedDriver,
-                    passenger: week.passenger
+                    driver_name: entry.driver,
+                    passenger: entry.passenger
                 });
 
                 if (error) alert('Błąd: ' + error.message);
-                else await fetchData();
+                else await fetchData(); // Przeładuj widok
             };
 
             const removeDriver = async (tripId) => {
-                if(!confirm("Czy usunąć ten zapis?")) return;
+                if(!confirm("Czy usunąć ten przejazd?")) return;
                 const { error } = await _supabase.from('trips').delete().eq('id', tripId);
                 if (error) alert('Błąd');
                 else await fetchData();
             };
 
-            // Uniwersalna funkcja dodawania (dla drivers i passengers)
             const addNewPerson = async (table, nameRef) => {
                 if (!nameRef) return;
                 const { error } = await _supabase.from(table).insert({ name: nameRef });
-                
-                if (error) {
-                    alert('Błąd: ' + error.message);
-                } else {
-                    // Reset inputów
+                if (error) alert('Błąd: ' + error.message);
+                else {
                     if (table === 'drivers') newDriverName.value = '';
                     if (table === 'passengers') newPassengerName.value = '';
-                    await fetchData(); // Odśwież listy
+                    await fetchData();
                 }
             };
 
