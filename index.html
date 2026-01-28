@@ -12,8 +12,6 @@
         body { background-color: #f3f4f6; font-family: sans-serif; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         [v-cloak] { display: none; }
-        
-        /* Styl dla formularza dodawania */
         .add-form { background-color: #f9fafb; border-top: 1px dashed #d1d5db; }
     </style>
 </head>
@@ -60,18 +58,41 @@
 
                 <!-- Lista zaplanowanych przejazdów w ten dzień -->
                 <div v-if="week.trips.length > 0" class="p-2 space-y-2 bg-white">
-                    <div v-for="trip in week.trips" :key="trip.id" class="flex justify-between items-center bg-green-50 p-3 rounded border border-green-200 shadow-sm">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-green-700 uppercase">Pasażer:</span>
+                    <div v-for="trip in week.trips" :key="trip.id" class="flex justify-between items-center bg-white p-3 rounded border border-gray-200 shadow-sm relative overflow-hidden">
+                        
+                        <!-- Pasek koloru zależny od typu -->
+                        <div class="absolute left-0 top-0 bottom-0 w-1" 
+                             :class="{
+                                'bg-green-500': trip.trip_type === 'both',
+                                'bg-blue-400': trip.trip_type === 'to',
+                                'bg-orange-400': trip.trip_type === 'from'
+                             }"></div>
+
+                        <div class="pl-2 w-full">
+                            <!-- Pasażer i Typ -->
+                            <div class="flex justify-between items-start">
                                 <span class="font-bold text-gray-800">{{ trip.passenger }}</span>
+                                
+                                <!-- Etykiety typu -->
+                                <span v-if="trip.trip_type === 'both'" class="text-[10px] font-bold uppercase bg-green-100 text-green-700 px-2 py-0.5 rounded border border-green-200">
+                                    W obie strony
+                                </span>
+                                <span v-else-if="trip.trip_type === 'to'" class="text-[10px] font-bold uppercase bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                                    Tylko Tam &rarr;
+                                </span>
+                                <span v-else-if="trip.trip_type === 'from'" class="text-[10px] font-bold uppercase bg-orange-100 text-orange-700 px-2 py-0.5 rounded border border-orange-200">
+                                    &larr; Tylko Powrót
+                                </span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-green-700 uppercase">Kierowca:</span>
-                                <span class="text-sm text-gray-800">{{ trip.driver_name }}</span>
+
+                            <!-- Kierowca -->
+                            <div class="mt-1 flex items-center text-sm text-gray-600">
+                                <span class="text-xs uppercase font-bold mr-1 text-gray-400">Kierowca:</span>
+                                {{ trip.driver_name }}
                             </div>
                         </div>
-                        <button @click="removeDriver(trip.id)" class="text-red-400 hover:text-red-600 p-2">
+
+                        <button @click="removeDriver(trip.id)" class="text-gray-300 hover:text-red-500 p-2 ml-1 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                             </svg>
@@ -79,7 +100,7 @@
                     </div>
                 </div>
 
-                <!-- Formularz dodawania (zawsze widoczny) -->
+                <!-- Formularz dodawania -->
                 <div class="add-form p-4">
                     <p class="text-xs text-gray-400 uppercase font-bold mb-2">
                         {{ week.trips.length > 0 ? '+ Dodaj kolejny transport' : 'Zaplanuj transport' }}
@@ -91,19 +112,26 @@
                             <option v-for="p in passengers" :value="p.name">{{ p.name }}</option>
                         </select>
 
-                        <!-- Wybór Kierowcy -->
-                        <div class="flex gap-2">
-                            <select v-model="week.newEntry.driver" class="w-full p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="" disabled selected>-- Kto wiezie? --</option>
+                        <!-- Wybór Rodzaju Kursu -->
+                        <div class="flex items-center gap-2">
+                            <select v-model="week.newEntry.type" class="w-1/2 p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
+                                <option value="both">W obie strony</option>
+                                <option value="to">Tylko TAM &rarr;</option>
+                                <option value="from">&larr; Tylko POWRÓT</option>
+                            </select>
+
+                            <!-- Wybór Kierowcy -->
+                            <select v-model="week.newEntry.driver" class="w-1/2 p-2 border border-gray-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="" disabled selected>-- Kto? --</option>
                                 <option v-for="driver in drivers" :value="driver.name">{{ driver.name }}</option>
                             </select>
-                            
-                            <button @click="assignDriver(week)" 
-                                    :disabled="!week.newEntry.driver || !week.newEntry.passenger"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap">
-                                Zapisz
-                            </button>
                         </div>
+                            
+                        <button @click="assignDriver(week)" 
+                                :disabled="!week.newEntry.driver || !week.newEntry.passenger"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm mt-1">
+                            Zapisz przejazd
+                        </button>
                     </div>
                 </div>
 
@@ -112,7 +140,6 @@
 
         <!-- Sekcja: Zarządzanie (Zwijana) -->
         <div class="space-y-3 mb-8">
-            <!-- Kierowcy -->
             <div class="card p-3">
                 <button @click="uiState.showAddDriver = !uiState.showAddDriver" class="flex justify-between items-center w-full text-sm font-bold text-gray-700">
                     <span>Baza Kierowców</span>
@@ -125,8 +152,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Pasażerowie -->
             <div class="card p-3">
                 <button @click="uiState.showAddPassenger = !uiState.showAddPassenger" class="flex justify-between items-center w-full text-sm font-bold text-gray-700">
                     <span>Baza Pasażerów</span>
@@ -150,7 +175,11 @@
                     <span class="text-gray-500 text-xs">{{ formatDate(trip.date) }}</span>
                     <div class="text-right">
                         <span class="block font-bold text-gray-800">{{ trip.driver_name }}</span>
-                        <span class="block text-xs text-gray-500">→ {{ trip.passenger }}</span>
+                        <div class="text-xs text-gray-500">
+                            {{ trip.passenger }}
+                            <span v-if="trip.trip_type === 'to'" class="text-blue-500">(tylko tam)</span>
+                            <span v-if="trip.trip_type === 'from'" class="text-orange-500">(tylko powrót)</span>
+                        </div>
                     </div>
                 </li>
             </ul>
@@ -168,8 +197,6 @@
     // ---------------------------------------------------------
 
     const { createClient } = supabase;
-    
-    // Zabezpieczenie przed pustymi kluczami (dla debugowania)
     const _supabase = (SUPABASE_URL.includes('TWOJ') || SUPABASE_KEY.includes('TWOJ')) 
         ? null 
         : createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -190,21 +217,17 @@
             });
             const newDriverName = ref('');
             const newPassengerName = ref('');
-
             const suggestedDriver = ref('');
             const suggestionReason = ref('');
 
-            // --- POBIERANIE DANYCH ---
             const fetchData = async () => {
                 if (!_supabase) {
                     alert("UZUPEŁNIJ KLUCZE SUPABASE W KODZIE HTML!");
                     loading.value = false;
                     return;
                 }
-
                 loading.value = true;
                 
-                // 1. Pobierz wszystko
                 const [driversRes, passengersRes, tripsRes] = await Promise.all([
                     _supabase.from('drivers').select('*').order('name'),
                     _supabase.from('passengers').select('*').order('name'),
@@ -215,55 +238,43 @@
                 passengers.value = passengersRes.data || [];
                 const allTrips = tripsRes.data || [];
 
-                // 2. Historia
                 const today = new Date().toISOString().split('T')[0];
                 const threeMonthsAgo = new Date();
                 threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
                 history.value = allTrips.filter(t => t.date < today && new Date(t.date) > threeMonthsAgo);
-                
-                // 3. Generuj widok tygodni
                 generateUpcomingWeeks(allTrips);
-                
-                // 4. Sugestie
                 calculateSuggestion(allTrips);
-
                 loading.value = false;
             };
 
             const generateUpcomingWeeks = (allTrips) => {
                 const weeks = [];
                 let d = new Date();
-                // Przeskocz do najbliższej soboty
                 d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7);
 
                 for (let i = 0; i < 5; i++) {
                     const dateStr = d.toISOString().split('T')[0];
-                    
-                    // Znajdź wszystkie przejazdy w ten dzień
                     const tripsThisDay = allTrips.filter(t => t.date === dateStr);
                     
-                    // Sprawdź, kto już jedzie, żeby podpowiedzieć kogoś innego
+                    // Prosta logika podpowiedzi pasażera (z pominięciem precyzyjnego sprawdzania typów tras dla uproszczenia)
                     const takenPassengers = tripsThisDay.map(t => t.passenger);
-                    
-                    // Znajdź pierwszego pasażera z bazy, który nie ma jeszcze transportu w ten dzień
-                    // (np. jeśli Bogdan ma, to podstaw Annę)
                     let suggestedPassenger = '';
                     const availablePassenger = passengers.value.find(p => !takenPassengers.includes(p.name));
                     
-                    // Jeśli wszyscy mają transport, zostaw puste lub pierwszego z listy
                     if (availablePassenger) {
                         suggestedPassenger = availablePassenger.name;
                     } else if (passengers.value.length > 0) {
-                        suggestedPassenger = ''; // Niech użytkownik wybierze sam
+                        suggestedPassenger = ''; 
                     }
 
                     weeks.push({
                         date: dateStr,
-                        trips: tripsThisDay, // Tablica przejazdów (może być pusta)
-                        newEntry: {          // Stan formularza dla tego konkretnego dnia
+                        trips: tripsThisDay,
+                        newEntry: { 
                             passenger: suggestedPassenger, 
-                            driver: '' 
+                            driver: '',
+                            type: 'both' // Domyślnie w obie strony
                         }
                     });
                     
@@ -306,11 +317,12 @@
                 const { error } = await _supabase.from('trips').insert({
                     date: week.date,
                     driver_name: entry.driver,
-                    passenger: entry.passenger
+                    passenger: entry.passenger,
+                    trip_type: entry.type // Zapisujemy typ przejazdu
                 });
 
                 if (error) alert('Błąd: ' + error.message);
-                else await fetchData(); // Przeładuj widok
+                else await fetchData();
             };
 
             const removeDriver = async (tripId) => {
