@@ -145,9 +145,8 @@
                     <span class="text-blue-500 font-normal text-xs">{{ drivers.length }} osób {{ uiState.showAddDriver ? '▲' : '▼' }}</span>
                 </button>
                 <div v-if="uiState.showAddDriver" class="mt-3 pt-2 border-t">
-                    <p class="text-xs text-gray-400 mb-2">Możesz wpisać "Jan Kowalski" - system sam zamieni na "Kowalski, Jan".</p>
                     <div class="flex gap-2">
-                        <input v-model="newDriverName" type="text" placeholder="Np. Jan Kowalski" class="flex-1 p-2 border rounded text-sm">
+                        <input v-model="newDriverName" type="text" placeholder="Imię i Nazwisko" class="flex-1 p-2 border rounded text-sm">
                         <button @click="addNewPerson('drivers', newDriverName)" class="bg-gray-800 text-white px-3 py-2 rounded text-sm">Dodaj</button>
                     </div>
                 </div>
